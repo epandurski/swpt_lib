@@ -3,6 +3,7 @@ name = "swpt_lib"
 version = "0.1.0"
 description = "A library of tools shared by all swaptacular micro-services"
 authors = ["Evgeni Pandurski <epandurski@gmail.com>"]
+homepage = "https://github.com/epandurski/swpt_lib"
 
 [tool.poetry.dependencies]
 python = "^3.7"
