@@ -6,6 +6,7 @@ from .utils import Int64Converter
 
 
 rules = [
+    Rule('/authority', endpoint='authority'),
     Rule('/debtors/<i64:debtorId>', endpoint='debtor'),
     Rule('/creditors/<i64:creditorId>', endpoint='creditor'),
 ]
