@@ -1,2 +1,4 @@
 # swpt_lib
 A library of tools shared by all swaptacular micro-services
+
+You can read the docs [here](https://flask-melodramatiq.readthedocs.io/en/latest/).
