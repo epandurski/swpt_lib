@@ -7,7 +7,7 @@ _I64_SPAN = _MAX_UINT64 + 1
 
 
 def i64_to_u64(value: int) -> int:
-    """"Convert a signed 64-bit integer to unsigned 64-bit integer.
+    """Convert a signed 64-bit integer to unsigned 64-bit integer.
 
     Raises `ValueError` if the value is not in the range of signed
     64-bit integers.
@@ -22,7 +22,7 @@ def i64_to_u64(value: int) -> int:
 
 
 def u64_to_i64(value: int) -> int:
-    """"Convert an unsigned 64-bit integer to a signed 64-bit integer.
+    """Convert an unsigned 64-bit integer to a signed 64-bit integer.
 
     Raises `ValueError` if the value is not in the range of unsigned
     64-bit integers.
