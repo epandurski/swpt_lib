@@ -1,9 +1,31 @@
+import os
+from typing import Any
 from werkzeug.routing import BaseConverter, ValidationError
+from flask import current_app
 
 _MIN_INT64 = -1 << 63
 _MAX_INT64 = (1 << 63) - 1
 _MAX_UINT64 = (1 << 64) - 1
 _I64_SPAN = _MAX_UINT64 + 1
+
+
+class _MISSING:
+    pass
+
+
+def get_config_value(key: str) -> Any:
+    """Get the value for the configuration variable with a name `key`.
+
+    If there is a `Flask` application context, the app's config will
+    be checked first. If that fails, the environment will be checked
+    next. If that fails too, `None` will be returned.
+
+    """
+
+    app_config_value = current_app.config.get(key, _MISSING) if current_app else _MISSING
+    if app_config_value is _MISSING:
+        return os.environ.get(key)
+    return app_config_value
 
 
 def i64_to_u64(value: int) -> int:

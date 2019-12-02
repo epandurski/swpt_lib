@@ -2,7 +2,8 @@ import os
 from urllib.parse import urlsplit, urlunsplit
 from werkzeug.routing import Map, Rule, BuildError as WerkzeugBuildError
 from werkzeug.exceptions import NotFound
-from .utils import Int64Converter
+from flask import current_app
+from .utils import Int64Converter, get_config_value
 
 
 rules = [
@@ -92,7 +93,7 @@ def get_url_scheme():
 
     """
 
-    return os.environ.get('SWPT_URL_SCHEME', '') or 'http'
+    return get_config_value('SWPT_URL_SCHEME') or 'http'
 
 
 def get_server_name():
@@ -103,7 +104,7 @@ def get_server_name():
 
     """
 
-    return os.environ.get('SWPT_SERVER_NAME', '') or None
+    return get_config_value('SWPT_SERVER_NAME') or None
 
 
 assert not any(str(r).endswith("/") for r in rules), 'a rule ends with "/".'
