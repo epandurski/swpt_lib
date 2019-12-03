@@ -12,10 +12,11 @@ def test_get_config_value():
     os.environ['K1'] = 'one'
     os.environ['K3'] = 'three'
     app = Flask(__name__)
-    app.config.from_mapping({'K1': 1, 'K2': 2})
+    app.config.from_mapping({'K1': '1', 'K2': 2})
     with app.app_context():
-        assert c.get_config_value('K1') == 1
-        assert c.get_config_value('K2') == 2
+        assert c.get_config_value('K1') == '1'
+        with pytest.raises(ValueError):
+            c.get_config_value('K2')
         assert c.get_config_value('K3') == 'three'
     assert c.get_config_value('K1') == 'one'
     assert c.get_config_value('K2') is None

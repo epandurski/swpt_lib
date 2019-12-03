@@ -1,8 +1,6 @@
-import os
 from urllib.parse import urlsplit, urlunsplit
 from werkzeug.routing import Map, Rule, BuildError as WerkzeugBuildError
 from werkzeug.exceptions import NotFound
-from flask import current_app
 from .utils import Int64Converter, get_config_value
 
 

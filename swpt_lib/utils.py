@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Optional
 from werkzeug.routing import BaseConverter, ValidationError
 from flask import current_app
 
@@ -13,18 +13,21 @@ class _MISSING:
     pass
 
 
-def get_config_value(key: str) -> Any:
+def get_config_value(key: str) -> Optional[str]:
     """Get the value for the configuration variable with a name `key`.
 
-    If there is a `Flask` application context, the app's config will
-    be checked first. If that fails, the environment will be checked
-    next. If that fails too, `None` will be returned.
+    The returned value is either a string or `None`. If there is a
+    `Flask` application context, the app's config will be checked
+    first. If that fails, the environment will be checked next. If
+    that fails too, `None` will be returned.
 
     """
 
     app_config_value = current_app.config.get(key, _MISSING) if current_app else _MISSING
     if app_config_value is _MISSING:
         return os.environ.get(key)
+    if not isinstance(app_config_value, str):
+        raise ValueError(f'a non-string value for "{key}"')
     return app_config_value
 
 
