@@ -1,7 +1,7 @@
 from datetime import timedelta
 import random
 
-TOTAL_BLOCKS_QUERY = """
+LAST_BLOCK_QUERY = """
 SELECT pg_relation_size('{tablename}') / current_setting('block_size')::int
 """
 
@@ -25,7 +25,7 @@ class TableScanner:
         self.total_blocks = 1
 
     def __update_current_block(self) -> int:
-        result = self.db.engine.execute(TOTAL_BLOCKS_QUERY.format(tablename=self.table.name))
+        result = self.db.engine.execute(LAST_BLOCK_QUERY.format(tablename=self.table.name))
         self.total_blocks = result.scalar() + 1
         assert self.total_blocks > 0
         if self.current_block < 0:
