@@ -22,27 +22,30 @@ class TableScanner:
         self.db = db
         self.completion_goal = completion_goal
         self.current_block = -1
-        self.total_blocks = 1
 
-    def __update_current_block(self) -> int:
+    def _calc_current_block(self) -> int:
         result = self.db.engine.execute(LAST_BLOCK_QUERY.format(tablename=self.table.name))
-        self.total_blocks = result.scalar() + 1
-        assert self.total_blocks > 0
+        total_blocks = result.scalar() + 1
+        assert total_blocks > 0
         if self.current_block < 0:
-            self.current_block = random.randrange(self.total_blocks)
-        if self.current_block >= self.total_blocks:
+            self.current_block = random.randrange(total_blocks)
+        if self.current_block >= total_blocks:
             self.current_block = 0
+        return self.current_block
+
+    def _advance_current_block(self) -> int:
+        self.current_block += self.blocks_per_turn
         return self.current_block
 
     def execute_turn(self):
         """Process some rows."""
 
-        start_block = self.__update_current_block()
-        self.current_block += self.blocks_per_turn
+        first_block = self._calc_current_block()
+        current_block = self._advance_current_block()
         rows = self.db.engine.execute(TID_SCAN_QUERY.format(
             tablename=self.table.name,
-            first_block=start_block,
-            last_block=self.current_block - 1,
+            first_block=first_block,
+            last_block=current_block - 1,
         ))
         for row in rows:
             self.process_row(row)
