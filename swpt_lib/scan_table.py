@@ -1,8 +1,10 @@
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from math import ceil
+import time
 import random
 
 TD_ZERO = timedelta(seconds=0)
+TD_MINUS_MILLISEC = timedelta(milliseconds=-1)
 
 LAST_BLOCK_QUERY = """
 SELECT pg_relation_size('{tablename}') / current_setting('block_size')::int
@@ -74,29 +76,46 @@ class TableScanner:
     db = None
     table = None
     blocks_per_query = 1
-    target_turn_duration = timedelta(milliseconds=10)
+    target_beat_duration = timedelta(milliseconds=10)
 
     def __init__(self, completion_goal: timedelta):
         assert completion_goal > TD_ZERO
-        self.table_reader = TableReader(self.db, self.table, self.blocks_per_query)
+        self.reader = TableReader(self.db, self.table, self.blocks_per_query)
         self.completion_goal = completion_goal
-        self.remaining_rows = 0
-        self.rows_per_turn = 1
 
-    def set_goal(self):
-        target_number_of_turns = max(1, self.completion_goal // self.target_turn_duration)
-        total_rows = max(0, self.db.engine.execute(TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar())
-        self.rows_per_turn = ceil(total_rows / target_number_of_turns + 0.1)
-        number_of_turns = ceil(total_rows / self.rows_per_turn) or 1
-        self.turn_duration = self.completion_goal / number_of_turns
+    def _set_rhythm(self):
+        target_number_of_beats = max(1, self.completion_goal // self.target_beat_duration)
+        total_rows = self.db.engine.execute(TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
+        self.rows_per_beat = ceil(total_rows / target_number_of_beats + 0.1)
+        number_of_beats = ceil(total_rows / self.rows_per_beat) or 1
+        self.beat_duration = self.completion_goal / number_of_beats
         self.accumulated_delay = TD_ZERO
+        current_ts = datetime.now(tz=timezone.utc)
+        self.last_beat_ended_at = current_ts
+        self.reset_rhythm_at = current_ts + self.completion_goal
 
-    def execute_turn(self):
-        pass
+    def _pause(self):
+        current_ts = datetime.now(tz=timezone.utc)
+        should_end_at = self.last_beat_ended_at + self.beat_duration
+        delay = current_ts - should_end_at
+        if delay > TD_MINUS_MILLISEC:
+            self.accumulated_delay += delay
+        else:
+            time.sleep(0.001)
+
+    def _beat(self):
+        rows = self.reader.get_rows(count=self.rows_per_beat)
+        self.process_rows(rows)
+        self._pause()
 
     def run(self):
         while True:
-            rows = self.table_reader.get_rows()
-        
+            self._set_rhythm()
+            while self.last_beat_ended_at < self.reset_rhythm_at:
+                self._beat()
+
+    def process_rows(self, rows):
+        raise NotImplementedError()
+
 
 #  explain select * from test where ctid = any (array['(10,2)'::tid, '(10,3)'::tid]);
