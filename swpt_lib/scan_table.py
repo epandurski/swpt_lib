@@ -37,20 +37,22 @@ class TableScanner:
         self.current_block += self.blocks_per_turn
         return self.current_block
 
-    def execute_turn(self):
+    def _execute_in_series(self, rows: list) -> None:
+        pass
+
+    def execute_turn(self) -> None:
         """Process some rows."""
 
         first_block = self._calc_current_block()
         current_block = self._advance_current_block()
-        rows = self.db.engine.execute(TID_SCAN_QUERY.format(
+        result = self.db.engine.execute(TID_SCAN_QUERY.format(
             tablename=self.table.name,
             first_block=first_block,
             last_block=current_block - 1,
         ))
-        for row in rows:
-            self.process_row(row)
+        self._execute_in_series(result.fetchall())
 
-    def run(self):
+    def run(self) -> None:
         """Scan the table continuously."""
 
     def process_row(self, row):
