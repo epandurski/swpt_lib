@@ -4,7 +4,7 @@ import time
 import random
 
 TD_ZERO = timedelta(seconds=0)
-TD_MINUS_MILLISEC = timedelta(milliseconds=-1)
+TD_MIN_SLEEPTIME = timedelta(milliseconds=10)
 
 LAST_BLOCK_QUERY = """
 SELECT pg_relation_size('{tablename}') / current_setting('block_size')::int
@@ -58,7 +58,7 @@ class TableReader:
         ))
         return tid_scan.fetchall()
 
-    def get_rows(self, count=1) -> list:
+    def get_rows(self, count) -> list:
         """Return a list of at most `count` rows."""
 
         rows = self.queue
@@ -83,30 +83,30 @@ class TableScanner:
         self.reader = TableReader(self.db, self.table, self.blocks_per_query)
         self.completion_goal = completion_goal
 
-    def _set_rhythm(self):
+    def _set_rhythm(self) -> None:
         target_number_of_beats = max(1, self.completion_goal // self.target_beat_duration)
         total_rows = self.db.engine.execute(TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
         self.rows_per_beat = ceil(total_rows / target_number_of_beats + 0.1)
         number_of_beats = ceil(total_rows / self.rows_per_beat) or 1
         self.beat_duration = self.completion_goal / number_of_beats
-        self.accumulated_delay = TD_ZERO
+        self.saved_time = TD_ZERO
         current_ts = datetime.now(tz=timezone.utc)
         self.last_beat_ended_at = current_ts
         self.reset_rhythm_at = current_ts + self.completion_goal
 
-    def _pause(self):
+    def _calc_saved_time(self, time_bonus: timedelta) -> timedelta:
         current_ts = datetime.now(tz=timezone.utc)
-        should_end_at = self.last_beat_ended_at + self.beat_duration
-        delay = current_ts - should_end_at
-        if delay > TD_MINUS_MILLISEC:
-            self.accumulated_delay += delay
-        else:
-            time.sleep(0.001)
+        elapsed_time = current_ts - self.last_beat_ended_at
+        self.last_beat_ended_at = current_ts
+        return time_bonus - elapsed_time
 
-    def _beat(self):
+    def _beat(self) -> None:
         rows = self.reader.get_rows(count=self.rows_per_beat)
         self.process_rows(rows)
-        self._pause()
+        self.saved_time += self._calc_saved_time(time_bonus=self.beat_duration)
+        if self.saved_time > TD_MIN_SLEEPTIME:
+            time.sleep(self.saved_time.total_seconds())
+            self.saved_time += self._calc_saved_time(time_bonus=TD_ZERO)
 
     def run(self):
         while True:
@@ -116,6 +116,3 @@ class TableScanner:
 
     def process_rows(self, rows):
         raise NotImplementedError()
-
-
-#  explain select * from test where ctid = any (array['(10,2)'::tid, '(10,3)'::tid]);
