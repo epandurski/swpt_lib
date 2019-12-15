@@ -58,7 +58,7 @@ class TableReader:
         ))
         return tid_scan.fetchall()
 
-    def get_rows(self, count) -> list:
+    def read_rows(self, count) -> list:
         """Return a list of at most `count` rows."""
 
         rows = self.queue
@@ -75,8 +75,8 @@ class TableReader:
 class TableScanner:
     db = None
     table = None
-    blocks_per_query = 1
-    target_beat_duration = timedelta(milliseconds=10)
+    blocks_per_query = 40
+    target_beat_duration = timedelta(milliseconds=25)
 
     def __init__(self, completion_goal: timedelta):
         assert completion_goal > TD_ZERO
@@ -92,21 +92,23 @@ class TableScanner:
         self.saved_time = TD_ZERO
         current_ts = datetime.now(tz=timezone.utc)
         self.last_beat_ended_at = current_ts
+
+        # TODO: Should we reset the rhythm more frequently?
         self.reset_rhythm_at = current_ts + self.completion_goal
 
-    def _calc_saved_time(self, time_bonus: timedelta) -> timedelta:
+    def _calc_elapsed_time(self) -> timedelta:
         current_ts = datetime.now(tz=timezone.utc)
         elapsed_time = current_ts - self.last_beat_ended_at
         self.last_beat_ended_at = current_ts
-        return time_bonus - elapsed_time
+        return elapsed_time
 
     def _beat(self) -> None:
-        rows = self.reader.get_rows(count=self.rows_per_beat)
+        rows = self.reader.read_rows(count=self.rows_per_beat)
         self.process_rows(rows)
-        self.saved_time += self._calc_saved_time(time_bonus=self.beat_duration)
+        self.saved_time += self.beat_duration - self._calc_elapsed_time()
         if self.saved_time > TD_MIN_SLEEPTIME:
             time.sleep(self.saved_time.total_seconds())
-            self.saved_time += self._calc_saved_time(time_bonus=TD_ZERO)
+            self.saved_time -= self._calc_elapsed_time()
 
     def run(self):
         while True:
