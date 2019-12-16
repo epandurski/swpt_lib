@@ -72,6 +72,18 @@ class TableReader:
 
 
 class TableScanner:
+    """A table-scanner superclass.
+
+    Each subclass must define the following attributes:
+      `table`
+         The `sqlalchemy.Table` instance for the table that should be
+         scanned.
+      `columns`
+         Optional list of `sqlalchemy.Column` instances. Only these
+         columns will be retrieved from the database.
+
+    """
+
     table = None  # model.__table__`
     columns = None
     blocks_per_query = 40
