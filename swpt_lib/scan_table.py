@@ -1,3 +1,4 @@
+from collections import deque
 from datetime import timedelta, datetime, timezone
 from math import ceil
 import time
@@ -68,8 +69,7 @@ class TableReader:
             except EndOfTableError:
                 self.current_block = 0
                 break
-        self.queue = rows[count:]  # TODO: Eliminate the unnecessary copy?
-        return rows[:count]
+        return [rows.pop() for _ in range(count)]
 
 
 class TableScanner:
@@ -92,8 +92,6 @@ class TableScanner:
         self.saved_time = TD_ZERO
         current_ts = datetime.now(tz=timezone.utc)
         self.last_beat_ended_at = current_ts
-
-        # TODO: Should we reset the rhythm more frequently?
         self.reset_rhythm_at = current_ts + self.completion_goal
 
     def _calc_elapsed_time(self) -> timedelta:
