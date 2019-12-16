@@ -37,7 +37,7 @@ class TableReader:
         self.table = table  # model.__table__`
         self.blocks_per_query = blocks_per_query
         self.current_block = -1
-        self.queue = []
+        self.queue = deque()
 
     def _ensure_valid_current_block(self):
         last_block = self.db.engine.execute(LAST_BLOCK_QUERY.format(tablename=self.table.name))
