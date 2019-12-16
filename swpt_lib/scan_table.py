@@ -27,7 +27,7 @@ class TableReader:
     def __init__(self, db, table, blocks_per_query, columns=None):
         assert blocks_per_query >= 1
         self.db = db
-        self.table = table  # model.__table__`
+        self.table = table
         self.table_query = sqlalchemy.select(columns or table.columns)
         self.blocks_per_query = blocks_per_query
         self.current_block = -1
@@ -71,7 +71,7 @@ class TableReader:
 
 class TableScanner:
     db = None
-    table = None
+    table = None  # model.__table__`
     columns = None
     blocks_per_query = 40
     target_beat_duration = timedelta(milliseconds=25)
