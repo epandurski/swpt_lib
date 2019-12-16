@@ -24,9 +24,9 @@ class EndOfTableError(Exception):
 
 
 class TableReader:
-    def __init__(self, db, table, blocks_per_query, columns=None):
+    def __init__(self, engine, table, blocks_per_query, columns=None):
         assert blocks_per_query >= 1
-        self.db = db
+        self.engine = engine
         self.table = table
         self.table_query = sqlalchemy.select(columns or table.columns)
         self.blocks_per_query = blocks_per_query
@@ -34,7 +34,7 @@ class TableReader:
         self.queue = deque()
 
     def _ensure_valid_current_block(self):
-        last_block = self.db.engine.execute(LAST_BLOCK_QUERY.format(tablename=self.table.name))
+        last_block = self.engine.execute(LAST_BLOCK_QUERY.format(tablename=self.table.name))
         total_blocks = last_block.scalar() + 1
         assert total_blocks > 0
         if self.current_block < 0:
@@ -54,7 +54,7 @@ class TableReader:
         ))
         """)
         tid_range_query = self.table_query.where(tid_range_clause)
-        return self.db.engine.execute(tid_range_query).fetchall()
+        return self.engine.execute(tid_range_query).fetchall()
 
     def read_rows(self, count) -> list:
         """Return a list of at most `count` rows."""
@@ -76,14 +76,15 @@ class TableScanner:
     blocks_per_query = 40
     target_beat_duration = timedelta(milliseconds=25)
 
-    def __init__(self, completion_goal: timedelta):
+    def __init__(self, engine, completion_goal: timedelta):
         assert completion_goal > TD_ZERO
-        self.reader = TableReader(self.db, self.table, self.blocks_per_query, self.columns)
+        self.engine = engine
+        self.reader = TableReader(self.engine, self.table, self.blocks_per_query, self.columns)
         self.completion_goal = completion_goal
 
     def _set_rhythm(self) -> None:
         target_number_of_beats = max(1, self.completion_goal // self.target_beat_duration)
-        total_rows = self.db.engine.execute(TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
+        total_rows = self.engine.execute(TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
         self.rows_per_beat = ceil(total_rows / target_number_of_beats + 0.1)
         number_of_beats = ceil(total_rows / self.rows_per_beat) or 1
         self.beat_duration = self.completion_goal / number_of_beats
