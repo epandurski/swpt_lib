@@ -70,7 +70,6 @@ class TableReader:
 
 
 class TableScanner:
-    db = None
     table = None  # model.__table__`
     columns = None
     blocks_per_query = 40
@@ -78,40 +77,41 @@ class TableScanner:
 
     def __init__(self, engine, completion_goal: timedelta):
         assert completion_goal > TD_ZERO
-        self.engine = engine
-        self.reader = TableReader(self.engine, self.table, self.blocks_per_query, self.columns)
-        self.completion_goal = completion_goal
+        self.__engine = engine
+        self.__reader = TableReader(self.__engine, self.table, self.blocks_per_query, self.columns)
+        self.__completion_goal = completion_goal
 
-    def _set_rhythm(self) -> None:
-        target_number_of_beats = max(1, self.completion_goal // self.target_beat_duration)
-        total_rows = self.engine.execute(TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
-        self.rows_per_beat = ceil(total_rows / target_number_of_beats + 0.1)
-        number_of_beats = ceil(total_rows / self.rows_per_beat) or 1
-        self.beat_duration = self.completion_goal / number_of_beats
-        self.saved_time = TD_ZERO
+    def __set_rhythm(self) -> None:
+        completion_goal = self.__completion_goal
+        target_number_of_beats = max(1, completion_goal // self.target_beat_duration)
+        total_rows = self.__engine.execute(TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
+        self.__rows_per_beat = ceil(total_rows / target_number_of_beats + 0.1)
+        number_of_beats = ceil(total_rows / self.__rows_per_beat) or 1
+        self.__beat_duration = completion_goal / number_of_beats
+        self.__saved_time = TD_ZERO
         current_ts = datetime.now(tz=timezone.utc)
-        self.last_beat_ended_at = current_ts
-        self.reset_rhythm_at = current_ts + self.completion_goal
+        self.__last_beat_ended_at = current_ts
+        self.__reset_rhythm_at = current_ts + completion_goal
 
-    def _calc_elapsed_time(self) -> timedelta:
+    def __calc_elapsed_time(self) -> timedelta:
         current_ts = datetime.now(tz=timezone.utc)
-        elapsed_time = current_ts - self.last_beat_ended_at
-        self.last_beat_ended_at = current_ts
+        elapsed_time = current_ts - self.__last_beat_ended_at
+        self.__last_beat_ended_at = current_ts
         return elapsed_time
 
-    def _beat(self) -> None:
-        rows = self.reader.read_rows(count=self.rows_per_beat)
+    def __beat(self) -> None:
+        rows = self.__reader.read_rows(count=self.__rows_per_beat)
         self.process_rows(rows)
-        self.saved_time += self.beat_duration - self._calc_elapsed_time()
-        if self.saved_time > TD_MIN_SLEEPTIME:
-            time.sleep(self.saved_time.total_seconds())
-            self.saved_time -= self._calc_elapsed_time()
+        self.__saved_time += self.__beat_duration - self.__calc_elapsed_time()
+        if self.__saved_time > TD_MIN_SLEEPTIME:
+            time.sleep(self.__saved_time.total_seconds())
+            self.__saved_time -= self.__calc_elapsed_time()
 
     def run(self):
         while True:
-            self._set_rhythm()
-            while self.last_beat_ended_at < self.reset_rhythm_at:
-                self._beat()
+            self.__set_rhythm()
+            while self.__last_beat_ended_at < self.__reset_rhythm_at:
+                self.__beat()
 
     def process_rows(self, rows):
         raise NotImplementedError()
