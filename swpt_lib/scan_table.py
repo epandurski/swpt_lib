@@ -1,4 +1,5 @@
 from collections import deque
+import sqlalchemy
 from datetime import timedelta, datetime, timezone
 from math import ceil
 import time
@@ -17,24 +18,17 @@ FROM pg_catalog.pg_class
 WHERE relname = '{tablename}'
 """
 
-TID_SCAN_QUERY = """
-SELECT * FROM "{tablename}" WHERE ctid = ANY (ARRAY (
-  SELECT ('(' || b.b || ',' || t.t || ')')::tid
-  FROM generate_series({first_block:d}, {last_block:d}) AS b(b),
-       generate_series(0, current_setting('block_size')::int / 32) AS t(t)
-))
-"""
-
 
 class EndOfTableError(Exception):
     """The end of the table has been reached."""
 
 
 class TableReader:
-    def __init__(self, db, table, blocks_per_query):
+    def __init__(self, db, table, blocks_per_query, columns=None):
         assert blocks_per_query >= 1
         self.db = db
         self.table = table  # model.__table__`
+        self.table_query = sqlalchemy.select(columns or table.columns)
         self.blocks_per_query = blocks_per_query
         self.current_block = -1
         self.queue = deque()
@@ -52,12 +46,15 @@ class TableReader:
         self._ensure_valid_current_block()
         first_block = self.current_block
         self.current_block += self.blocks_per_query
-        tid_scan = self.db.engine.execute(TID_SCAN_QUERY.format(
-            tablename=self.table.name,
-            first_block=first_block,
-            last_block=self.current_block - 1,
+        last_block = self.current_block - 1
+        tid_range_clause = sqlalchemy.text(f"""ctid = ANY (ARRAY (
+          SELECT ('(' || b.b || ',' || t.t || ')')::tid
+          FROM generate_series({first_block:d}, {last_block:d}) AS b(b),
+               generate_series(0, current_setting('block_size')::int / 32) AS t(t)
         ))
-        return tid_scan.fetchall()
+        """)
+        tid_range_query = self.table_query.where(tid_range_clause)
+        return self.db.engine.execute(tid_range_query).fetchall()
 
     def read_rows(self, count) -> list:
         """Return a list of at most `count` rows."""
@@ -75,12 +72,13 @@ class TableReader:
 class TableScanner:
     db = None
     table = None
+    columns = None
     blocks_per_query = 40
     target_beat_duration = timedelta(milliseconds=25)
 
     def __init__(self, completion_goal: timedelta):
         assert completion_goal > TD_ZERO
-        self.reader = TableReader(self.db, self.table, self.blocks_per_query)
+        self.reader = TableReader(self.db, self.table, self.blocks_per_query, self.columns)
         self.completion_goal = completion_goal
 
     def _set_rhythm(self) -> None:
