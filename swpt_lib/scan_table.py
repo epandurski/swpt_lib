@@ -5,6 +5,8 @@ from math import ceil
 import time
 import random
 
+__all__ = ['TableScanner']
+
 TD_ZERO = timedelta(seconds=0)
 TD_MIN_SLEEPTIME = timedelta(milliseconds=10)
 
