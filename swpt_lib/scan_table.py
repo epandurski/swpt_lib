@@ -77,11 +77,6 @@ class _TableReader:
 class _Rhythm:
     """A helper class to maintain a constant scanning rhythm."""
 
-    beat_duration: timedelta
-    last_beat_ended_at: datetime
-    rhythm_ends_at: datetime
-    extra_time: timedelta
-
     TD_ZERO = timedelta(seconds=0)
     TD_MIN_SLEEPTIME = timedelta(milliseconds=10)
 
