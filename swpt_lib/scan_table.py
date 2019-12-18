@@ -1,3 +1,4 @@
+import logging
 from typing import List, Tuple, Optional
 from collections import deque
 import sqlalchemy
@@ -24,8 +25,15 @@ class _TableReader:
 
     LAST_BLOCK_QUERY = """SELECT pg_relation_size('{tablename}') / current_setting('block_size')::int"""
 
-    def __init__(self, engine: Connectable, table: Table, blocks_per_query: int, columns: List[ColumnElement] = None):
+    def __init__(self,
+                 reader_id: str,
+                 engine: Connectable,
+                 table: Table,
+                 blocks_per_query: int,
+                 columns: List[ColumnElement] = None):
         assert blocks_per_query >= 1
+        self.reader_id = reader_id
+        self.logger = logging.getLogger(__name__)
         self.engine = engine
         self.table = table
         self.table_query = sqlalchemy.select(columns or table.columns)
@@ -65,6 +73,7 @@ class _TableReader:
                 self.queue.extend(self._advance_current_block())
             except self.EndOfTableError:
                 self.current_block = 0
+                self.logger.info('%s reached the end of the table', self.reader_id)
                 break
         for _ in range(count):
             try:
@@ -186,7 +195,8 @@ class TableScanner:
         """
 
         assert self.table is not None, '"table" must be defined in the subclass.'
-        reader = _TableReader(engine, self.table, self.blocks_per_query, self.columns)
+        reader_id = '<{} at 0x{:x}>'.format(type(self).__name__, id(self))
+        reader = _TableReader(reader_id, engine, self.table, self.blocks_per_query, self.columns)
         while True:
             total_rows = engine.execute(self.TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
             rhythm, rows_per_beat = self.__create_rhythm(total_rows, completion_goal)

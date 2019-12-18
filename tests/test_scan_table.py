@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import timedelta
 import pytest
@@ -29,14 +30,16 @@ def engine(user_table):
     return engine
 
 
-def test_table_reader(user_table, engine):
-    reader = _TableReader(engine, user_table, 40, [user_table.c.user_id, user_table.c.user_name])
+def test_table_reader(user_table, engine, caplog):
+    caplog.set_level(logging.INFO)
+    reader = _TableReader('TestReader', engine, user_table, 40, [user_table.c.user_id, user_table.c.user_name])
     rows = []
     while len(rows) < 100:
         rows.extend(reader.read_rows(1000))
     assert len({r['user_id'] for r in rows}) == 10
     assert hasattr(rows[0], 'user_name')
     assert not hasattr(rows[0], 'email_address')
+    assert 'TestReader reached the end of the table' in caplog.text
 
 
 def test_user_scanner(user_table, engine):
