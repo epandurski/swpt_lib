@@ -11,9 +11,6 @@ import random
 
 __all__ = ['TableScanner', 'DEFAULT_BLOCKS_PER_QUERY', 'DEFAULT_TARGET_BEAT_DURATION']
 
-TD_ZERO = timedelta(seconds=0)
-TD_MIN_SLEEPTIME = timedelta(milliseconds=10)
-
 DEFAULT_BLOCKS_PER_QUERY = 40
 """The default number of blocks to be retrieved per query."""
 
@@ -87,14 +84,17 @@ class Rhythm:
     rhythm_ends_at: datetime
     extra_time: timedelta
 
+    TD_ZERO = timedelta(seconds=0)
+    TD_MIN_SLEEPTIME = timedelta(milliseconds=10)
+
     def __init__(self, completion_goal: timedelta, number_of_beats: int):
-        assert completion_goal > TD_ZERO
+        assert completion_goal > self.TD_ZERO
         assert number_of_beats >= 1
         current_ts = datetime.now(tz=timezone.utc)
         self.beat_duration = completion_goal / number_of_beats
         self.last_beat_ended_at = current_ts
         self.rhythm_ends_at = current_ts + completion_goal
-        self.extra_time = TD_ZERO
+        self.extra_time = self.TD_ZERO
 
     def _register_elapsed_time(self) -> timedelta:
         current_ts = datetime.now(tz=timezone.utc)
@@ -104,7 +104,7 @@ class Rhythm:
 
     def register_beat(self):
         self.extra_time += self.beat_duration - self._register_elapsed_time()
-        if self.extra_time > TD_MIN_SLEEPTIME:
+        if self.extra_time > self.TD_MIN_SLEEPTIME:
             time.sleep(self.extra_time.total_seconds())
             self.extra_time -= self._register_elapsed_time()
 
