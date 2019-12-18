@@ -10,11 +10,8 @@ from math import ceil
 import time
 import random
 
-DEFAULT_BLOCKS_PER_QUERY = 40
-"""The default number of blocks to be retrieved per query."""
-
-DEFAULT_TARGET_BEAT_DURATION = 25
-"""The default target duration of scanning beats in milliseconds."""
+_DEFAULT_BLOCKS_PER_QUERY = 40
+_DEFAULT_TARGET_BEAT_DURATION = 25
 
 
 class _TableReader:
@@ -116,37 +113,8 @@ class _Rhythm:
 
 
 class TableScanner:
-    """A table-scanner super-class. Each subclass can define the following
-    attributes:
-
-      `table`
-         The :class:`sqlalchemy.schema.Table` that will be scanned
-         (`model.__table__` if declarative base is used).
-
-         **Must be defined in the subclass.**
-
-      `columns`
-         An optional list of
-         :class:`sqlalchemy.sql.expression.ColumnElement` instances
-         to be be retrieved for each row. Most of the time it will be
-         a list of :class:`~sqlalchemy.schema.Column`
-         instances. Defaults to `table.columns`.
-
-      `blocks_per_query`
-         The number of database pages (blocks) to be retrieved per
-         query. Defaults to ``DEFAULT_BLOCKS_PER_QUERY``. It might be
-         a good idea to increase this number when the size of the
-         table row is big.
-
-      `target_beat_duration`
-         The scanning of the table is done in a sequence of
-         "beats". This attribute determines the ideal duration in
-         milliseconds of those beats. The value should be big enough
-         so that, on average, all the operations performed on table's
-         rows could be completed within this interval. Setting this
-         value too high may have the effect of too many rows being
-         processed simultaneously in one beat. The default value is
-         ``DEFAULT_TARGET_BEAT_DURATION``.
+    """A table-scanner super-class. Sub-classes may override class
+    attributes.
 
     Exapmle::
 
@@ -166,9 +134,34 @@ class TableScanner:
     TOTAL_ROWS_QUERY = """SELECT reltuples::bigint FROM pg_catalog.pg_class WHERE relname = '{tablename}'"""
 
     table: Optional[Table] = None
+    """The :class:`sqlalchemy.schema.Table` that will be scanned.
+    (``Model.__table__`` if declarative base is used.)
+
+    **Must be defined in the subclass.**
+    """
+
     columns: Optional[List[ColumnElement]] = None
-    blocks_per_query: int = DEFAULT_BLOCKS_PER_QUERY
-    target_beat_duration: int = DEFAULT_TARGET_BEAT_DURATION
+    """An optional list of
+    :class:`sqlalchemy.sql.expression.ColumnElement` instances to be
+    be retrieved for each row. Most of the time it will be a list of
+    :class:`~sqlalchemy.schema.Column` instances. Defaults to all
+    columns.
+    """
+
+    blocks_per_query: int = _DEFAULT_BLOCKS_PER_QUERY
+    """The number of database pages (blocks) to be retrieved per query. It
+    might be a good idea to increase this number when the size of the
+    table row is big.
+    """
+
+    target_beat_duration: int = _DEFAULT_TARGET_BEAT_DURATION
+    """The scanning of the table is done in a sequence of "beats". This
+    attribute determines the ideal duration in milliseconds of those
+    beats. The value should be big enough so that, on average, all the
+    operations performed on table's rows could be completed within
+    this interval. Setting this value too high may have the effect of
+    too many rows being processed simultaneously in one beat.
+    """
 
     def __create_rhythm(self, total_rows: int, completion_goal: timedelta) -> Tuple[_Rhythm, int]:
         assert total_rows >= 0
@@ -210,7 +203,7 @@ class TableScanner:
 
         **Must be defined in the subclass.**
 
-        :param rows: A list of table rows. It could be an empty list.
+        :param rows: A list of table rows. Could be an empty list.
 
         """
 
