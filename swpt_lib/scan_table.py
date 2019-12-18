@@ -87,8 +87,14 @@ class Rhythm:
     rhythm_ends_at: datetime
     extra_time: timedelta
 
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    def __init__(self, completion_goal: timedelta, number_of_beats: int):
+        assert completion_goal > TD_ZERO
+        assert number_of_beats >= 1
+        current_ts = datetime.now(tz=timezone.utc)
+        self.beat_duration = completion_goal / number_of_beats
+        self.last_beat_ended_at = current_ts
+        self.rhythm_ends_at = current_ts + completion_goal
+        self.extra_time = TD_ZERO
 
     def _register_elapsed_time(self) -> timedelta:
         current_ts = datetime.now(tz=timezone.utc)
@@ -164,20 +170,11 @@ class TableScanner:
 
     def __calc_rhythm(self, total_rows: int, completion_goal: timedelta) -> Tuple[Rhythm, int]:
         assert total_rows >= 0
-        assert completion_goal > TD_ZERO
         assert self.target_beat_duration > 0
-        target_beat_duration = timedelta(milliseconds=self.target_beat_duration)
-        target_number_of_beats = max(1, completion_goal // target_beat_duration)
+        target_number_of_beats = max(1, completion_goal // timedelta(milliseconds=self.target_beat_duration))
         rows_per_beat = max(1, ceil(total_rows / target_number_of_beats))
         number_of_beats = max(1, ceil(total_rows / rows_per_beat))
-        current_ts = datetime.now(tz=timezone.utc)
-        rhythm = Rhythm(
-            beat_duration=completion_goal / number_of_beats,
-            last_beat_ended_at=current_ts,
-            rhythm_ends_at=current_ts + completion_goal,
-            extra_time=TD_ZERO,
-        )
-        return rhythm, rows_per_beat
+        return Rhythm(completion_goal, number_of_beats), rows_per_beat
 
     def run(self, engine: Connectable, completion_goal: timedelta):
         """Scan table continuously.
