@@ -205,7 +205,7 @@ class TableScanner:
                 self.process_rows(rows)
                 rhythm.register_beat()
 
-    def process_rows(self, rows: list) -> None:
+    def process_rows(self, rows: list) -> None:  # pragma: no cover
         """Process a list or rows.
 
         **Must be defined in the subclass.**
