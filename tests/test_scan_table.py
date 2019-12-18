@@ -2,7 +2,7 @@ import os
 from datetime import timedelta
 import pytest
 from sqlalchemy import MetaData, Table, Column, Integer, String, create_engine
-from swpt_lib.scan_table import TableReader, TableScanner
+from swpt_lib.scan_table import _TableReader, TableScanner
 
 
 @pytest.fixture(scope='session')
@@ -30,7 +30,7 @@ def engine(user_table):
 
 
 def test_table_reader(user_table, engine):
-    reader = TableReader(engine, user_table, 40, [user_table.c.user_id, user_table.c.user_name])
+    reader = _TableReader(engine, user_table, 40, [user_table.c.user_id, user_table.c.user_name])
     rows = []
     while len(rows) < 100:
         rows.extend(reader.read_rows(1000))

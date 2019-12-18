@@ -9,8 +9,6 @@ from math import ceil
 import time
 import random
 
-__all__ = ['TableScanner', 'DEFAULT_BLOCKS_PER_QUERY', 'DEFAULT_TARGET_BEAT_DURATION']
-
 DEFAULT_BLOCKS_PER_QUERY = 40
 """The default number of blocks to be retrieved per query."""
 
@@ -18,7 +16,7 @@ DEFAULT_TARGET_BEAT_DURATION = 25
 """The default target duration of scanning beats in milliseconds."""
 
 
-class TableReader:
+class _TableReader:
     """Reads a table sequentially, ad infinitum."""
 
     class EndOfTableError(Exception):
@@ -76,7 +74,7 @@ class TableReader:
         return rows
 
 
-class Rhythm:
+class _Rhythm:
     """A helper class to maintain a constant scanning rhythm."""
 
     beat_duration: timedelta
@@ -168,13 +166,13 @@ class TableScanner:
     blocks_per_query: int = DEFAULT_BLOCKS_PER_QUERY
     target_beat_duration: int = DEFAULT_TARGET_BEAT_DURATION
 
-    def __calc_rhythm(self, total_rows: int, completion_goal: timedelta) -> Tuple[Rhythm, int]:
+    def __create_rhythm(self, total_rows: int, completion_goal: timedelta) -> Tuple[_Rhythm, int]:
         assert total_rows >= 0
         assert self.target_beat_duration > 0
         target_number_of_beats = max(1, completion_goal // timedelta(milliseconds=self.target_beat_duration))
         rows_per_beat = max(1, ceil(total_rows / target_number_of_beats))
         number_of_beats = max(1, ceil(total_rows / rows_per_beat))
-        return Rhythm(completion_goal, number_of_beats), rows_per_beat
+        return _Rhythm(completion_goal, number_of_beats), rows_per_beat
 
     def run(self, engine: Connectable, completion_goal: timedelta):
         """Scan table continuously.
@@ -193,10 +191,10 @@ class TableScanner:
         """
 
         assert self.table is not None, '"table" must be defined in the subclass.'
-        reader = TableReader(engine, self.table, self.blocks_per_query, self.columns)
+        reader = _TableReader(engine, self.table, self.blocks_per_query, self.columns)
         while True:
             total_rows = engine.execute(self.TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
-            rhythm, rows_per_beat = self.__calc_rhythm(total_rows, completion_goal)
+            rhythm, rows_per_beat = self.__create_rhythm(total_rows, completion_goal)
             while not rhythm.has_ended:
                 rows = reader.read_rows(count=rows_per_beat)
                 self.process_rows(rows)
