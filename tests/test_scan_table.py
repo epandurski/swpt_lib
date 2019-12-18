@@ -25,6 +25,7 @@ def engine(user_table):
     for i in range(10):
         stmt = user_table.insert().values(user_id=i, user_name=f'user_{i}', email_address='user_{i}@example.com')
         engine.execute(stmt)
+    engine.execute('ANALYZE user_table')
     return engine
 
 
@@ -56,5 +57,5 @@ def test_user_scanner(user_table, engine):
 
     scanner = UserScanner()
     with pytest.raises(ProcessError):
-        scanner.run(engine, timedelta(seconds=0.05))
+        scanner.run(engine, timedelta(seconds=0.5))
     assert scanner.count > 30
