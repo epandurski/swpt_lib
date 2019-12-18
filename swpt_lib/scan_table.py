@@ -73,7 +73,7 @@ class TableReader:
                 break
         for _ in range(count):
             try:
-                rows.append(self.queue.pop())
+                rows.append(self.queue.popleft())
             except IndexError:
                 break
         return rows
