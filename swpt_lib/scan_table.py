@@ -56,7 +56,7 @@ class _TableReader:
         tid_range_query = self.table_query.where(tid_range_clause)
         return self.engine.execute(tid_range_query).fetchall()
 
-    def read_rows(self, count) -> list:
+    def read_rows(self, count: int) -> list:
         """Return a list of at most `count` rows."""
 
         rows = []
@@ -102,7 +102,7 @@ class _Rhythm:
             self.extra_time -= self._register_elapsed_time()
 
     @property
-    def has_ended(self):
+    def has_ended(self) -> bool:
         return self.last_beat_ended_at >= self.rhythm_ends_at
 
 
