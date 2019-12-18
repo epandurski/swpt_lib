@@ -15,7 +15,7 @@ TD_ZERO = timedelta(seconds=0)
 TD_MIN_SLEEPTIME = timedelta(milliseconds=10)
 
 DEFAULT_BLOCKS_PER_QUERY = 40
-"""The default number of blocks to be retrieved with one query."""
+"""The default number of blocks to be retrieved per query."""
 
 DEFAULT_TARGET_BEAT_DURATION = 25
 """The default target duration of scanning beats in milliseconds."""
