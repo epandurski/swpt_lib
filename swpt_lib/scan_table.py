@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Tuple, Optional
 from collections import deque
 import sqlalchemy
 from sqlalchemy.schema import Table
@@ -36,7 +36,7 @@ class TableReader:
         self.table_query = sqlalchemy.select(columns or table.columns)
         self.blocks_per_query = blocks_per_query
         self.current_block = -1
-        self.queue = deque()
+        self.queue: deque = deque()
 
     def _ensure_valid_current_block(self):
         last_block = self.engine.execute(self.LAST_BLOCK_QUERY.format(tablename=self.table.name))
@@ -82,7 +82,6 @@ class TableReader:
 class Rhythm:
     """A helper class to maintain a constant scanning rhythm."""
 
-    rows_per_beat: int
     beat_duration: timedelta
     last_beat_ended_at: datetime
     rhythm_ends_at: datetime
@@ -113,14 +112,12 @@ class TableScanner:
     attributes:
 
       `table`
-
          The :class:`sqlalchemy.schema.Table` that will be scanned
          (`model.__table__` if declarative base is used).
 
          **Must be defined in the subclass.**
 
       `columns`
-
          An optional list of
          :class:`sqlalchemy.sql.expression.ColumnElement` instances
          to be be retrieved for each row. Most of the time it will be
@@ -128,14 +125,12 @@ class TableScanner:
          instances. Defaults to `table.columns`.
 
       `blocks_per_query`
-
          The number of database pages (blocks) to be retrieved per
          query. Defaults to ``DEFAULT_BLOCKS_PER_QUERY``. It might be
          a good idea to increase this number when the size of the
          table row is big.
 
       `target_beat_duration`
-
          The scanning of the table is done in a sequence of
          "beats". This attribute determines the ideal duration in
          milliseconds of those beats. The value should be big enough
@@ -162,12 +157,12 @@ class TableScanner:
 
     TOTAL_ROWS_QUERY = """SELECT reltuples::bigint FROM pg_catalog.pg_class WHERE relname = '{tablename}'"""
 
-    table: Connectable = None
+    table: Optional[Table] = None
     columns: Optional[List[ColumnElement]] = None
     blocks_per_query: int = DEFAULT_BLOCKS_PER_QUERY
     target_beat_duration: int = DEFAULT_TARGET_BEAT_DURATION
 
-    def __calc_rhythm(self, total_rows: int, completion_goal: timedelta) -> Rhythm:
+    def __calc_rhythm(self, total_rows: int, completion_goal: timedelta) -> Tuple[Rhythm, int]:
         assert total_rows >= 0
         assert completion_goal > TD_ZERO
         assert self.target_beat_duration > 0
@@ -176,13 +171,13 @@ class TableScanner:
         rows_per_beat = max(1, ceil(total_rows / target_number_of_beats))
         number_of_beats = max(1, ceil(total_rows / rows_per_beat))
         current_ts = datetime.now(tz=timezone.utc)
-        return Rhythm(
-            rows_per_beat=rows_per_beat,
+        rhythm = Rhythm(
             beat_duration=completion_goal / number_of_beats,
             last_beat_ended_at=current_ts,
             rhythm_ends_at=current_ts + completion_goal,
             extra_time=TD_ZERO,
         )
+        return rhythm, rows_per_beat
 
     def run(self, engine: Connectable, completion_goal: timedelta):
         """Scan table continuously.
@@ -204,9 +199,9 @@ class TableScanner:
         reader = TableReader(engine, self.table, self.blocks_per_query, self.columns)
         while True:
             total_rows = engine.execute(self.TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
-            rhythm = self.__calc_rhythm(total_rows, completion_goal)
+            rhythm, rows_per_beat = self.__calc_rhythm(total_rows, completion_goal)
             while not rhythm.has_ended:
-                rows = reader.read_rows(count=rhythm.rows_per_beat)
+                rows = reader.read_rows(count=rows_per_beat)
                 self.process_rows(rows)
                 rhythm.register_beat()
 
