@@ -171,7 +171,7 @@ class TableScanner:
         number_of_beats = max(1, ceil(total_rows / rows_per_beat))
         return _Rhythm(completion_goal, number_of_beats), rows_per_beat
 
-    def run(self, engine: Connectable, completion_goal: timedelta):
+    def run(self, engine: Connectable, completion_goal: timedelta, quit_early: bool = False):
         """Scan table continuously.
 
         The table is scanned sequentially, starting from a random
@@ -185,6 +185,9 @@ class TableScanner:
           should be processed. This is merely an approximate goal. In
           reality, scans can take any amount of time.
 
+        :param quit_early: Exit after some time. This is mainly useful
+          during testing.
+
         """
 
         assert self.table is not None, '"table" must be defined in the subclass.'
@@ -197,6 +200,8 @@ class TableScanner:
                 rows = reader.read_rows(count=rows_per_beat)
                 self.process_rows(rows)
                 rhythm.register_beat()
+            if quit_early:  # pragma: no cover
+                break
 
     def process_rows(self, rows: list) -> None:  # pragma: no cover
         """Process a list or rows.
