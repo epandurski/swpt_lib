@@ -193,14 +193,16 @@ class TableScanner:
         assert self.table is not None, '"table" must be defined in the subclass.'
         reader_id = '<{} at 0x{:x}>'.format(type(self).__name__, id(self))
         reader = _TableReader(reader_id, engine, self.table, self.blocks_per_query, self.columns)
+        n = 0
         while True:
+            n += 1
             total_rows = engine.execute(self.TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
             rhythm, rows_per_beat = self.__create_rhythm(total_rows, completion_goal)
             while not rhythm.has_ended:
                 rows = reader.read_rows(count=rows_per_beat)
                 self.process_rows(rows)
                 rhythm.register_beat()
-            if quit_early:  # pragma: no cover
+            if quit_early and n > 10:  # pragma: no cover
                 break
 
     def process_rows(self, rows: list) -> None:  # pragma: no cover
