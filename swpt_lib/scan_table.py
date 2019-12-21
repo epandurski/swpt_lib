@@ -200,7 +200,8 @@ class TableScanner:
             rhythm, rows_per_beat = self.__create_rhythm(total_rows, completion_goal)
             while not rhythm.has_ended:
                 rows = reader.read_rows(count=rows_per_beat)
-                self.process_rows(rows)
+                if rows:
+                    self.process_rows(rows)
                 rhythm.register_beat()
             if quit_early and n > 10:  # pragma: no cover
                 break
@@ -210,7 +211,7 @@ class TableScanner:
 
         **Must be defined in the subclass.**
 
-        :param rows: A list of table rows. Could be an empty list.
+        :param rows: A list of table rows.
 
         """
 
