@@ -1,6 +1,6 @@
 import os
-from datetime import date
-from typing import Optional
+from datetime import date, datetime, timedelta
+from typing import Optional, Tuple
 from werkzeug.routing import BaseConverter, ValidationError
 from flask import current_app
 
@@ -9,6 +9,7 @@ _MAX_INT64 = (1 << 63) - 1
 _MAX_UINT64 = (1 << 64) - 1
 _I64_SPAN = _MAX_UINT64 + 1
 _DATE_2020_01_01 = date(2020, 1, 1)
+_TD_ZERO = timedelta(seconds=0)
 
 
 class _MISSING:
@@ -101,3 +102,27 @@ def date_to_int24(d: date) -> int:
     assert days >= 0
     assert days >> 24 == 0
     return days
+
+
+def is_later_event(event: Tuple[datetime, int], other_event: Tuple[Optional[datetime], Optional[int]]) -> bool:
+    """Return whether `event` is later than `other_event`.
+
+    Each of the passed events must be a (`datetime`, `int`) tuple. The
+    `datetime` must be the event timestamp, and the `int` must be the
+    event sequential number (with eventual wrapping). An event with a
+    later timestamp is always considered later than an event with an
+    earlier timestamp. Only if the two timestamps are equal, the
+    sequential numbers of the events are compared.
+
+    """
+
+    ts, seqnum = event
+    other_ts, other_seqnum = other_event
+    if other_ts is None:
+        return True
+    advance = ts - other_ts
+    if advance > _TD_ZERO:
+        return True
+    if advance < _TD_ZERO:
+        return False
+    return other_seqnum is None or 0 < (seqnum - other_seqnum) % 0x100000000 < 0x80000000
