@@ -109,10 +109,13 @@ def is_later_event(event: Tuple[datetime, int], other_event: Tuple[Optional[date
 
     Each of the passed events must be a (`datetime`, `int`) tuple. The
     `datetime` must be the event timestamp, and the `int` must be the
-    event sequential number (with eventual wrapping). An event with a
-    later timestamp is always considered later than an event with an
-    earlier timestamp. Only if the two timestamps are equal, the
-    sequential numbers of the events are compared.
+    event sequential number (with eventual wrapping).
+
+    An event with a later timestamp is always considered later than an
+    event with an earlier timestamp. Only if the two timestamps are
+    equal, the sequential numbers of the events are compared. When the
+    timestamp of `other_event` is `None`, `event` is considered as a
+    later event.
 
     """
 
