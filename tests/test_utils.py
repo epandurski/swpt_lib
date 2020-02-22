@@ -98,8 +98,19 @@ def test_is_later_event():
     assert not c.is_later_event((t1, 0), (t2, 0))
     assert not c.is_later_event((t1, 0), (t1, 0))
     assert not c.is_later_event((t1, 0), (t1, 1))
+    assert c.is_later_event((t1, -2147483648), (t1, 2147483647))
     assert c.is_later_event((t1, 1), (t1, 0))
     assert c.is_later_event((t1, 1000), (t1, 0))
     assert c.is_later_event((t1, 0), (t1, None))
     assert c.is_later_event((t1, 0), (None, None))
     assert c.is_later_event((t1, 0), (None, 1))
+
+
+def test_increment_seqnum():
+    MIN_INT32 = -1 << 31
+    MAX_INT32 = (1 << 31) - 1
+    assert MAX_INT32 == 2147483647
+    assert MIN_INT32 == -2147483648
+    assert c.increment_seqnum(0) == 1
+    assert c.increment_seqnum(MAX_INT32) == MIN_INT32
+    assert c.increment_seqnum(MIN_INT32) == MIN_INT32 + 1

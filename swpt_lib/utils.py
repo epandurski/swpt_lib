@@ -4,12 +4,15 @@ from typing import Optional, Tuple
 from werkzeug.routing import BaseConverter, ValidationError
 from flask import current_app
 
+_MIN_INT32 = -1 << 31
+_MAX_INT32 = (1 << 31) - 1
 _MIN_INT64 = -1 << 63
 _MAX_INT64 = (1 << 63) - 1
 _MAX_UINT64 = (1 << 64) - 1
 _I64_SPAN = _MAX_UINT64 + 1
 _DATE_2020_01_01 = date(2020, 1, 1)
-_TD_ZERO = timedelta(seconds=0)
+_TD_PLUS_SECOND = timedelta(seconds=1)
+_TD_MINUS_SECOND = timedelta(seconds=-1)
 
 
 class _MISSING:
@@ -109,13 +112,18 @@ def is_later_event(event: Tuple[datetime, int], other_event: Tuple[Optional[date
 
     Each of the passed events must be a (`datetime`, `int`) tuple. The
     `datetime` must be the event timestamp, and the `int` must be the
-    event sequential number (with eventual wrapping).
+    event sequential number (32-bit signed integer, with eventual
+    wrapping).
 
-    An event with a later timestamp is always considered later than an
-    event with an earlier timestamp. Only if the two timestamps are
-    equal, the sequential numbers of the events are compared. When the
-    timestamp of `other_event` is `None`, `event` is considered as a
-    later event.
+    An event with a noticeably later timestamp (>= 1s) is always
+    considered later than an event with an earlier timestamp. Only
+    when the two timestamps are very close (< 1s), the sequential
+    numbers of the events are compared. When the timestamp of
+    `other_event` is `None`, `event` is considered as a later event.
+
+    Note that sequential numbers are compared with possible 32-bit
+    signed integer wrapping in mind. For example, compared to
+    2147483647, -21474836478 is considered a later sequential number.
 
     """
 
@@ -124,8 +132,15 @@ def is_later_event(event: Tuple[datetime, int], other_event: Tuple[Optional[date
     if other_ts is None:
         return True
     advance = ts - other_ts
-    if advance > _TD_ZERO:
+    if advance >= _TD_PLUS_SECOND:
         return True
-    if advance < _TD_ZERO:
+    if advance <= _TD_MINUS_SECOND:
         return False
     return other_seqnum is None or 0 < (seqnum - other_seqnum) % 0x100000000 < 0x80000000
+
+
+def increment_seqnum(n: int) -> int:
+    """Increment a 32-bit signed integer with wrapping."""
+
+    assert _MIN_INT32 <= n <= _MAX_INT32
+    return _MIN_INT32 if n == _MAX_INT32 else n + 1
