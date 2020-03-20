@@ -10,7 +10,7 @@ _MIN_INT64 = -1 << 63
 _MAX_INT64 = (1 << 63) - 1
 _MAX_UINT64 = (1 << 64) - 1
 _I64_SPAN = _MAX_UINT64 + 1
-_DATE_2020_01_01 = date(2020, 1, 1)
+_DATE_1970_01_01 = date(1970, 1, 1)
 _TD_PLUS_SECOND = timedelta(seconds=1)
 _TD_MINUS_SECOND = timedelta(seconds=-1)
 
@@ -96,12 +96,12 @@ class Int64Converter(BaseConverter):
 def date_to_int24(d: date) -> int:
     """Return a non-negative 24-bit integer derived from a date.
 
-    The passed date must not be before January 1st, 2020. The returned
-    integer equals the number of days passed since January 1st, 2020.
+    The passed date must not be before January 1st, 1970. The returned
+    integer equals the number of days passed since January 1st, 1970.
 
     """
 
-    days = (d - _DATE_2020_01_01).days
+    days = (d - _DATE_1970_01_01).days
     assert days >= 0
     assert days >> 24 == 0
     return days

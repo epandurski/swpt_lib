@@ -86,9 +86,9 @@ def test_werkzeug_converter():
 
 
 def test_date_to_int24():
-    assert c.date_to_int24(date(2020, 1, 1)) == 0
-    assert c.date_to_int24(date(2020, 1, 2)) == 1
-    assert 365 * 7000 < c.date_to_int24(date(9020, 12, 31)) < 366 * 7000
+    assert c.date_to_int24(date(1970, 1, 1)) == 0
+    assert c.date_to_int24(date(1970, 1, 2)) == 1
+    assert 365 * 7000 < c.date_to_int24(date(8970, 12, 31)) < 366 * 7000
 
 
 def test_is_later_event():
