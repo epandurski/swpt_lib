@@ -1,13 +1,13 @@
 from urllib.parse import urlsplit, urlunsplit
-from werkzeug.routing import Map, Rule, BuildError as WerkzeugBuildError
+from werkzeug.routing import Map, Rule, RequestRedirect, BuildError as WerkzeugBuildError
 from werkzeug.exceptions import NotFound
 from .utils import Int64Converter, get_config_value
 
 
 rules = [
     Rule('/authority', endpoint='authority'),
-    Rule('/debtors/<i64:debtorId>', endpoint='debtor'),
-    Rule('/creditors/<i64:creditorId>', endpoint='creditor'),
+    Rule('/debtors/<i64:debtorId>/', endpoint='debtor'),
+    Rule('/creditors/<i64:creditorId>/', endpoint='creditor'),
 ]
 
 __doc__ = """
@@ -50,7 +50,7 @@ def match_url(endpoint, url):
 
     try:
         matched_endpoint, kw = _urls.match(path)
-    except NotFound:
+    except (NotFound, RequestRedirect):
         raise MatchError(url)
 
     if matched_endpoint != endpoint:
@@ -105,6 +105,5 @@ def get_server_name():
     return get_config_value('SWPT_SERVER_NAME') or None
 
 
-assert not any(str(r).endswith("/") for r in rules), 'a rule ends with "/".'
 assert len(set(r.endpoint for r in rules)) == len(rules), 'multiple rules for a single endpoint.'
-_urls = Map(rules, converters={'i64': Int64Converter}).bind('localhost')
+_urls = Map(rules, converters={'i64': Int64Converter}, strict_slashes=True).bind('localhost')
