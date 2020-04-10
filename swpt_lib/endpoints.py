@@ -8,6 +8,7 @@ rules = [
     Rule('/authority', endpoint='authority'),
     Rule('/debtors/<i64:debtorId>/', endpoint='debtor'),
     Rule('/creditors/<i64:creditorId>/', endpoint='creditor'),
+    Rule('/creditors/<i64:creditorId>/debtors/<i64:debtorId>', endpoint='account'),
 ]
 
 __doc__ = """
