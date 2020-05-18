@@ -1,4 +1,6 @@
+from __future__ import annotations
 import os
+from functools import total_ordering
 from datetime import date, datetime, timedelta
 from typing import Optional, Tuple
 from werkzeug.routing import BaseConverter, ValidationError
@@ -17,6 +19,33 @@ _TD_MINUS_SECOND = timedelta(seconds=-1)
 
 class _MISSING:
     pass
+
+
+@total_ordering
+class Seqnum:
+    """A signed 32-bit integer seqnum value.
+
+    Comparisions beteen `Seqnum` instances correctly deals with the
+    possible 32-bit integer wrapping.
+
+    """
+
+    def __init__(self, value: int):
+        assert _MIN_INT32 <= value <= _MAX_INT32
+        self.value = value
+
+    def __eq__(self, other: Seqnum):
+        return self.value == other.value
+
+    def __gt__(self, other: Seqnum):
+        return 0 < (self.value - other.value) % 0x100000000 < 0x80000000
+
+    def increment(self) -> Seqnum:
+        """Return an incremented `Seqnum` instance."""
+
+        value = self.value
+        assert _MIN_INT32 <= value <= _MAX_INT32
+        return Seqnum(_MIN_INT32 if value == _MAX_INT32 else value + 1)
 
 
 def get_config_value(key: str) -> Optional[str]:

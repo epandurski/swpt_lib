@@ -4,6 +4,8 @@ from datetime import date, datetime
 from flask import Flask
 from swpt_lib import utils as c
 
+MIN_INT32 = -1 << 31
+MAX_INT32 = (1 << 31) - 1
 MIN_INT64 = -1 << 63
 MAX_INT64 = (1 << 63) - 1
 MAX_UINT64 = (1 << 64) - 1
@@ -107,10 +109,20 @@ def test_is_later_event():
 
 
 def test_increment_seqnum():
-    MIN_INT32 = -1 << 31
-    MAX_INT32 = (1 << 31) - 1
     assert MAX_INT32 == 2147483647
     assert MIN_INT32 == -2147483648
     assert c.increment_seqnum(0) == 1
     assert c.increment_seqnum(MAX_INT32) == MIN_INT32
     assert c.increment_seqnum(MIN_INT32) == MIN_INT32 + 1
+
+
+def test_seqnum_class():
+    assert c.Seqnum(0) == c.Seqnum(0)
+    assert c.Seqnum(1) > c.Seqnum(0)
+    assert c.Seqnum(0) < c.Seqnum(1)
+    assert c.Seqnum(MIN_INT32) > c.Seqnum(MAX_INT32)
+    assert c.Seqnum(MAX_INT32) < c.Seqnum(MIN_INT32)
+    assert c.Seqnum(-10) > c.Seqnum(MAX_INT32)
+    assert c.Seqnum(0).increment().value == 1
+    assert c.Seqnum(MAX_INT32).increment().value == MIN_INT32
+    assert c.Seqnum(MIN_INT32).increment().value == MIN_INT32 + 1
