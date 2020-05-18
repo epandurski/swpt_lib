@@ -25,7 +25,7 @@ class _MISSING:
 class Seqnum:
     """A signed 32-bit integer seqnum value.
 
-    Comparisions beteen `Seqnum` instances correctly deals with the
+    Comparisions beteen `Seqnum` instances correctly deal with the
     possible 32-bit integer wrapping.
 
     """
@@ -41,7 +41,7 @@ class Seqnum:
         return 0 < (self.value - other.value) % 0x100000000 < 0x80000000
 
     def increment(self) -> Seqnum:
-        """Return an incremented `Seqnum` instance."""
+        """Return an incremented instance."""
 
         value = self.value
         assert _MIN_INT32 <= value <= _MAX_INT32
