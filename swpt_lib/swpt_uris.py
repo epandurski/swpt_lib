@@ -7,7 +7,7 @@ from swpt_lib.utils import u64_to_i64, i64_to_u64
 PREFIX = r'^swpt:(\d{1,20})'
 URLSAFE_B64 = re.compile(r'^[A-Za-z0-9_=-]*$')
 SWPT_DEBTOR_URI = re.compile(PREFIX + '$')
-SWPT_ACCOUNT_URI = re.compile(PREFIX + r'/(!?[A-Za-z0-9_=-]{1,100})$')
+SWPT_ACCOUNT_URI = re.compile(PREFIX + r'/(!?[A-Za-z0-9_=-]{1,136})$')
 
 
 def parse_debtor_uri(uri: str) -> int:
@@ -43,7 +43,7 @@ def parse_account_uri(uri: str) -> Tuple[int, str]:
         try:
             account_id = urlsafe_b64decode(encoded_account_id)
 
-            # Make sure this is not the canonical encoding.
+            # Make sure this is the canonical encoding.
             if urlsafe_b64encode(account_id) != encoded_account_id:
                 raise ValueError
 
@@ -51,6 +51,9 @@ def parse_account_uri(uri: str) -> Tuple[int, str]:
 
         except (binascii.Error, UnicodeDecodeError):
             raise ValueError from None
+
+    if len(account_id) > 100:
+        raise ValueError
 
     assert isinstance(debtor_id, int)
     assert isinstance(account_id, str)
@@ -75,18 +78,16 @@ def make_account_uri(debtor_id: int, account_id: str) -> str:
 
     """
 
-    if URLSAFE_B64.match(account_id):
-        encoded = account_id
-    else:
+    if not 1 <= len(account_id) <= 100:
+        raise ValueError
+
+    if not URLSAFE_B64.match(account_id):
         try:
-            encoded = account_id.encode('ascii')
+            ascii_encoded = account_id.encode('ascii')
         except UnicodeEncodeError:
             raise ValueError from None
 
-        encoded = urlsafe_b64encode(encoded).decode('ascii')
-        account_id = f'!{encoded}'
-
-    if not 1 <= len(encoded) <= 100:
-        raise ValueError
+        b64_encoded = urlsafe_b64encode(ascii_encoded)
+        account_id = f'!{b64_encoded.decode()}'
 
     return f'swpt:{i64_to_u64(debtor_id)}/{account_id}'

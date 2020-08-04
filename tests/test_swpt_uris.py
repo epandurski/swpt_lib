@@ -24,11 +24,12 @@ def test_parse_debtor_uri():
 
 def test_parse_account_uri():
     A100 = 100 * 'A'
+    A132 = 132 * 'A'
     assert parse_account_uri('swpt:1/1') == (1, '1')
     assert parse_account_uri('swpt:1/abc-_=123') == (1, 'abc-_=123')
     assert parse_account_uri('swpt:1/!aA==') == (1, 'h')
     assert parse_account_uri(f'swpt:1/{A100}') == (1, A100)
-    assert parse_account_uri(f'swpt:1/!{A100}') == (1, 75 * '\0')
+    assert parse_account_uri(f'swpt:1/!{A132}AA==') == (1, 100 * '\0')
 
     for uri in [
             'SWPT:1/',
@@ -40,7 +41,10 @@ def test_parse_account_uri():
             'swpt:1/!a=A==',
             'swpt:1/!9A==',
             f'swpt:1/{A100}A',
-            f'swpt:1/!{A100}A',
+            f'swpt:1/!{A132}A',
+            f'swpt:1/!{A132}AA',
+            f'swpt:1/!{A132}AAAA',
+            f'swpt:1/!{A132}AAAAA',
     ]:
         with pytest.raises(ValueError):
             parse_account_uri(uri)
@@ -66,7 +70,7 @@ def test_make_account_uri():
         (1, 100 * 'A'),
         (9223372036854775807, '%$@%Dfda-'),
         (-9223372036854775808, '!%$@%Dfda-'),
-        (-1, '!'),
+        (-1, '\n!\t?'),
     ]
 
     for t in correct:
