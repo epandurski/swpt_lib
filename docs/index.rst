@@ -13,6 +13,7 @@ Welcome to swpt_lib's documentation!
    endpoints
    utils
    scan_table
+   swpt_uris
 
 
 Indices and tables
