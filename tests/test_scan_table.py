@@ -32,7 +32,8 @@ def engine(user_table):
 
 def test_table_reader(user_table, engine, caplog):
     caplog.set_level(logging.INFO)
-    reader = _TableReader('TestReader', engine, user_table, 40, [user_table.c.user_id, user_table.c.user_name])
+    connection = engine.connect()
+    reader = _TableReader('TestReader', connection, user_table, 40, [user_table.c.user_id, user_table.c.user_name])
     rows = []
     while len(rows) < 100:
         rows.extend(reader.read_rows(1000))

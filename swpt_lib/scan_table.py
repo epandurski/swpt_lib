@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 from collections import deque
 import sqlalchemy
 from sqlalchemy.schema import Table
-from sqlalchemy.engine import Connectable
+from sqlalchemy.engine import Connectable, Engine, Connection
 from sqlalchemy.sql.expression import ColumnElement
 from datetime import timedelta, datetime, timezone
 from math import ceil
@@ -24,14 +24,16 @@ class _TableReader:
 
     def __init__(self,
                  reader_id: str,
-                 engine: Connectable,
+                 connection: Connection,
                  table: Table,
                  blocks_per_query: int,
                  columns: List[ColumnElement] = None):
+
+        assert isinstance(connection, Connection)
         assert blocks_per_query >= 1
         self.reader_id = reader_id
         self.logger = logging.getLogger(__name__)
-        self.engine = engine
+        self.connection = connection
         self.table = table
         self.table_query = sqlalchemy.select(columns or table.columns)
         self.blocks_per_query = blocks_per_query
@@ -39,7 +41,7 @@ class _TableReader:
         self.queue: deque = deque()
 
     def _ensure_valid_current_block(self):
-        last_block = self.engine.execute(self.LAST_BLOCK_QUERY.format(tablename=self.table.name))
+        last_block = self.connection.execute(self.LAST_BLOCK_QUERY.format(tablename=self.table.name))
         total_blocks = last_block.scalar() + 1
         assert total_blocks > 0
         if self.current_block < 0:
@@ -48,18 +50,19 @@ class _TableReader:
             raise self.EndOfTableError()
 
     def _advance_current_block(self) -> list:
-        self._ensure_valid_current_block()
-        first_block = self.current_block
-        self.current_block += self.blocks_per_query
-        last_block = self.current_block - 1
-        tid_range_clause = sqlalchemy.text(f"""ctid = ANY (ARRAY (
-          SELECT ('(' || b.b || ',' || t.t || ')')::tid
-          FROM generate_series({first_block:d}, {last_block:d}) AS b(b),
-               generate_series(0, current_setting('block_size')::int / 32) AS t(t)
-        ))
-        """)
-        tid_range_query = self.table_query.where(tid_range_clause)
-        return self.engine.execute(tid_range_query).fetchall()
+        with self.connection.begin():
+            self._ensure_valid_current_block()
+            first_block = self.current_block
+            self.current_block += self.blocks_per_query
+            last_block = self.current_block - 1
+            tid_range_clause = sqlalchemy.text(f"""ctid = ANY (ARRAY (
+              SELECT ('(' || b.b || ',' || t.t || ')')::tid
+              FROM generate_series({first_block:d}, {last_block:d}) AS b(b),
+                   generate_series(0, current_setting('block_size')::int / 32) AS t(t)
+            ))
+            """)
+            tid_range_query = self.table_query.where(tid_range_clause)
+            return self.connection.execute(tid_range_query).fetchall()
 
     def read_rows(self, count: int) -> list:
         """Return a list of at most `count` rows."""
@@ -190,13 +193,21 @@ class TableScanner:
 
         """
 
+        if isinstance(engine, Engine):
+            connection = engine.connect()
+        elif isinstance(engine, Connection):
+            connection = engine
+        else:
+            raise ValueError('not a connectable')
+
         assert self.table is not None, '"table" must be defined in the subclass.'
         reader_id = '<{} at 0x{:x}>'.format(type(self).__name__, id(self))
-        reader = _TableReader(reader_id, engine, self.table, self.blocks_per_query, self.columns)
+        reader = _TableReader(reader_id, connection, self.table, self.blocks_per_query, self.columns)
         n = 0
         while True:
             n += 1
-            total_rows = engine.execute(self.TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
+            with connection.begin():
+                total_rows = connection.execute(self.TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
             rhythm, rows_per_beat = self.__create_rhythm(total_rows, completion_goal)
             while not rhythm.has_ended:
                 rows = reader.read_rows(count=rows_per_beat)
