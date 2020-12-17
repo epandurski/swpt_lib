@@ -206,8 +206,11 @@ class TableScanner:
         n = 0
         while True:
             n += 1
+            tablename = self.table.name
             with connection.begin():
-                total_rows = connection.execute(self.TOTAL_ROWS_QUERY.format(tablename=self.table.name)).scalar()
+                total_rows = connection.execute(self.TOTAL_ROWS_QUERY.format(tablename=tablename)).scalar()
+            if total_rows is None:
+                raise RuntimeError(f'The table "{tablename}" does not exist.')
             rhythm, rows_per_beat = self.__create_rhythm(total_rows, completion_goal)
             while not rhythm.has_ended:
                 rows = reader.read_rows(count=rows_per_beat)
